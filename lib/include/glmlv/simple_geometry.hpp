@@ -31,6 +31,9 @@ struct SimpleGeometry
 
 SimpleGeometry makeTriangle();
 SimpleGeometry makeCube();
+SimpleGeometry makeQuadWithHalfSide(float half);
+SimpleGeometry makeUnitQuad();
+SimpleGeometry makeScreenCoverQuad();
 // Pass a number of subdivision to apply on the longitude of the sphere
 SimpleGeometry makeSphere(uint32_t subdivLongitude);
 

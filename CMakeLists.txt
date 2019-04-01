@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(openglnoel)
+project(opengl)
+
+set (CMAKE_CXX_STANDARD 11)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    add_definitions(
-        -std=c++14
-    )
+    set (CMAKE_CXX_STANDARD 14)
+    add_definitions(-std=c++14 -Wall -Wextra -Wno-misleading-indentation)
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -18,17 +19,17 @@ if (GLMLV_USE_BOOST_FILESYSTEM)
     )
 endif()
 
-set(IMGUI_DIR imgui-1.66b)
+set(IMGUI_DIR imgui-1.49)
 set(GLFW_DIR glfw-3.2.1)
-set(GLM_DIR glm-0.9.9.3)
+set(OPENAL_SOFT_DIR openal-soft-1.18.2)
+set(GLM_DIR glm-0.9.8.3)
 set(GLAD_DIR glad)
-set(JSON_DIR json-3.5.0)
+set(JSON_DIR json-2.0.9)
 set(STB_DIR stb)
-set(ASSIMP_DIR assimp-4.1.0)
-set(TINYGLTF_DIR tiny_gltf)
+set(TINY_OBJ_LOADER_DIR tinyobjloader-1.0.5)
 
 add_subdirectory(third-party/${GLFW_DIR})
-add_subdirectory(third-party/${ASSIMP_DIR})
+#add_subdirectory(third-party/${OPENAL_SOFT_DIR})
 
 find_package(OpenGL REQUIRED)
 
@@ -54,6 +55,25 @@ else()
     set(ASSET_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/assets)
 endif()
 
+include_directories(
+    ${OPENGL_INCLUDE_DIRS}
+    third-party/${GLFW_DIR}/include
+    third-party/${OPENAL_SOFT_DIR}/include
+    third-party/${GLM_DIR}
+    third-party/${GLAD_DIR}/include
+    third-party/${JSON_DIR}
+    third-party/${IMGUI_DIR}
+    third-party/${STB_DIR}
+    third-party/${TINY_OBJ_LOADER_DIR}
+    lib/include
+)
+
+if(GLMLV_USE_BOOST_FILESYSTEM)
+    include_directories (
+        ${Boost_INCLUDE_DIRS}
+    )
+endif()
+
 file(
     GLOB_RECURSE
     GLMLV_LIB_FILES
@@ -64,36 +84,6 @@ add_library(
     glmlv
     ${GLMLV_LIB_FILES}
 )
-
-target_include_directories(
-    glmlv
-    PUBLIC
-    ${OPENGL_INCLUDE_DIRS}
-    third-party/${GLFW_DIR}/include
-    third-party/${GLM_DIR}
-    third-party/${GLAD_DIR}/include
-    third-party/${JSON_DIR}
-    third-party/${IMGUI_DIR}
-    third-party/${IMGUI_DIR}/examples/
-    third-party/${ASSIMP_DIR}/include
-    ${CMAKE_BINARY_DIR}/third-party/${ASSIMP_DIR}/include
-    third-party/${STB_DIR}
-    third-party/${TINYGLTF_DIR}
-    lib/include
-)
-
-target_compile_definitions(
-    glmlv
-    PUBLIC
-    IMGUI_IMPL_OPENGL_LOADER_GLAD
-    GLM_ENABLE_EXPERIMENTAL
-)
-
-if(GLMLV_USE_BOOST_FILESYSTEM)
-    include_directories (
-        ${Boost_INCLUDE_DIRS}
-    )
-endif()
 
 c2ba_add_shader_directory(${CMAKE_CURRENT_SOURCE_DIR}/lib/shaders ${SHADER_OUTPUT_PATH}/glmlv)
 c2ba_add_assets_directory(${CMAKE_CURRENT_SOURCE_DIR}/lib/assets ${ASSET_OUTPUT_PATH}/glmlv)
@@ -109,9 +99,6 @@ set(
     third-party/${IMGUI_DIR}/imgui.cpp
     third-party/${IMGUI_DIR}/imgui_demo.cpp
     third-party/${IMGUI_DIR}/imgui_draw.cpp
-    third-party/${IMGUI_DIR}/imgui_widgets.cpp
-    third-party/${IMGUI_DIR}/examples/imgui_impl_opengl3.cpp
-    third-party/${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
 )
 
 set(
@@ -125,8 +112,12 @@ set(
     ${OPENGL_LIBRARIES}
     glfw
     glmlv
-    assimp
+#    openal
 )
+
+if(WIN32)
+    set(LIBRARIES ${LIBRARIES} Winmm)
+endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX AND NOT GLMLV_USE_BOOST_FILESYSTEM)
     set(LIBRARIES ${LIBRARIES} stdc++fs)
@@ -159,6 +150,11 @@ foreach(DIR ${APP_DIRECTORIES})
         ${APP}
         ${LIBRARIES}
     )
+
+    # set_target_properties(${APP} PROPERTIES INSTALL_RPATH "foobar")
+    # set_target_properties(${APP} PROPERTIES SKIP_BUILD_RPATH  FALSE)
+    # set_target_properties(${APP} PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE) 
+    # set_target_properties(${APP} PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 
     install(
         TARGETS ${APP}

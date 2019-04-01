@@ -19,7 +19,9 @@ void Image2DRGBA::Deleter::operator ()(unsigned char * ptr) const
 }
 
 Image2DRGBA::Image2DRGBA(size_t width, size_t height):
-    m_pData((unsigned char*) STBI_MALLOC(width * height * NumComponents * sizeof(unsigned char)))
+    m_pData((unsigned char*) STBI_MALLOC(width * height * NumComponents * sizeof(unsigned char))),
+    m_nWidth(width),
+    m_nHeight(height)
 {
 }
 

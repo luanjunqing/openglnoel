@@ -68,6 +68,9 @@ public:
 
     GLint getUniformLocation(const GLchar* name) const {
         GLint location = glGetUniformLocation(m_GLId, name);
+        if(location == -1) {
+            std::cerr << "Warning: Uniform \"" << name << "\" equals -1 (is it unused?)" << std::endl;
+        }
         return location;
     }
 

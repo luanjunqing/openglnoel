@@ -4,6 +4,20 @@
 namespace glmlv
 {
 
+SimpleGeometry makeQuadWithHalfSide(float half) {
+    return { 
+        {
+            { glm::vec3(-half,  half, 0), glm::vec3(0, 0, 1), glm::vec2(0, 1) },
+            { glm::vec3(-half, -half, 0), glm::vec3(0, 0, 1), glm::vec2(0, 0) },
+            { glm::vec3( half,  half, 0), glm::vec3(0, 0, 1), glm::vec2(1, 1) },
+            { glm::vec3( half, -half, 0), glm::vec3(0, 0, 1), glm::vec2(1, 0) }
+        }, { 0, 1, 2, 2, 1, 3 }
+    };
+}
+
+SimpleGeometry makeUnitQuad() { return makeQuadWithHalfSide(0.5f); }
+SimpleGeometry makeScreenCoverQuad() { return makeQuadWithHalfSide(1.0f); }
+
 SimpleGeometry makeTriangle()
 {
     std::vector<Vertex3f3f2f> vertexBuffer =
