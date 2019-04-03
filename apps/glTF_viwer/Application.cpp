@@ -23,7 +23,7 @@ int Application::run()
         glViewport(0, 0, viewportSize.x, viewportSize.y);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.0f);
-        m_projMatrix = glm::perspective(70.f, float(viewportSize.x) / viewportSize.y, 0.01f, 100.f);
+        m_projMatrix = glm::perspective(70.0f, float(viewportSize.x) / viewportSize.y, 0.01f, 100.0f);
         m_viewMatrix = m_viewController.getViewMatrix();
         glUniform3fv(m_uDirectionalLightDirLocation, 1, glm::value_ptr(glm::vec3(m_viewMatrix * glm::vec4(glm::normalize(m_DirLightDirection), 0))));
         glUniform3fv(m_uDirectionalLightIntensityLocation, 1, glm::value_ptr(m_DirLightColor * m_DirLightIntensity));
@@ -31,11 +31,12 @@ int Application::run()
         glUniform3fv(m_uPointLightIntensityLocation, 1, glm::value_ptr(m_PointLightColor * m_PointLightIntensity));
         // 激活纹理
         glActiveTexture(GL_TEXTURE0);
-        // 将uniform置零
+        // 将uniform与位置0绑定
         glUniform1i(m_uKdSamplerLocation, 0);
         // 设置采样模式
         glBindSampler(0, m_uKdSamplerLocation);
         drawModel(m_model);
+        // 解绑采样器
         glBindSampler(0, 0);
         // GUI code:
         glmlv::imguiNewFrame();
@@ -44,14 +45,14 @@ int Application::run()
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             if (ImGui::ColorEdit3("clearColor", clearColor))
             {
-                glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+                glClearColor(clearColor[0], clearColor[1], clearColor[2], 1.0f);
             }
             if (ImGui::CollapsingHeader("Directional Lighting"))
             {
-                ImGui::ColorEdit3("DirectionalLightingColor", glm::value_ptr(m_DirLightColor));
-                ImGui::DragFloat("DirectionalLightingIntensity", &m_DirLightIntensity, 0.1f, 0.0f, 100.0f);
-                if (ImGui::DragFloat("Phi", &m_DirLightPhiAngleDegrees, 1.0f, 0.0f, 360.0f) ||
-                    ImGui::DragFloat("Theta", &m_DirLightThetaAngleDegrees, 1.0f, 0.0f, 180.0f))
+                ImGui::ColorEdit3("DirLightColor", glm::value_ptr(m_DirLightColor));
+                ImGui::DragFloat("DirLightIntensity", &m_DirLightIntensity, 0.1f, 0.0f, 100.0f);
+                if (ImGui::DragFloat("Phi Angle", &m_DirLightPhiAngleDegrees, 1.0f, 0.0f, 360.0f) ||
+                    ImGui::DragFloat("Theta Angle", &m_DirLightThetaAngleDegrees, 1.0f, 0.0f, 180.0f))
                 {
                     m_DirLightDirection = computeDirectionVector(glm::radians(m_DirLightPhiAngleDegrees), glm::radians(m_DirLightThetaAngleDegrees));
                 }
@@ -65,9 +66,9 @@ int Application::run()
             ImGui::End();
         }
         glmlv::imguiRenderFrame();
-        // 事件处理
+        // 事件监听与处理
         glfwPollEvents();
-        // 交换缓存
+        // 交换缓冲区
         m_GLFWHandle.swapBuffers();
         auto ellapsedTime = glfwGetTime() - seconds;
         auto guiHasFocus = ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;
@@ -81,13 +82,13 @@ int Application::run()
 }
 
 Application::Application(int argc, char **argv) : m_AppPath{glmlv::fs::path{argv[0]}},
-                                                m_AppName{m_AppPath.stem().string()},
-                                                m_ImGuiIniFilename{m_AppName + ".imgui.ini"},
-                                                m_ShadersRootPath{m_AppPath.parent_path() / "shaders"}
+                                                  m_AppName{m_AppPath.stem().string()},
+                                                  m_ImGuiIniFilename{m_AppName + ".imgui.ini"},
+                                                  m_ShadersRootPath{m_AppPath.parent_path() / "shaders"}
 {
     if (argc < 2)
     {
-        std::cerr << "Using path " << argv[0] << " of the model" << std::endl;
+        std::cerr << "Enter the path to the model." << argv[0] << " <../>" << std::endl;
         exit(-1);
     }
     path = argv[1];
@@ -99,9 +100,11 @@ Application::Application(int argc, char **argv) : m_AppPath{glmlv::fs::path{argv
     m_attribs["POSITION"] = positionAttrLocation;
     m_attribs["NORMAL"] = normalAttrLocation;
     m_attribs["TEXCOORD_0"] = texCoordsAttrLocation;
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
-    // glEnable(GL_FRAMEBUFFER_SRGB);
+    glEnable(GL_FRAMEBUFFER_SRGB);
+
     m_program = glmlv::compileProgram({m_ShadersRootPath / m_AppName / "forward.vs.glsl", m_ShadersRootPath / m_AppName / "forward.fs.glsl"});
     m_program.use();
     m_uModelViewProjMatrixLocation = glGetUniformLocation(m_program.glId(), "uModelViewProjMatrix");
@@ -113,8 +116,8 @@ Application::Application(int argc, char **argv) : m_AppPath{glmlv::fs::path{argv
     m_uPointLightIntensityLocation = glGetUniformLocation(m_program.glId(), "uPointLightIntensity");
     m_uKdLocation = glGetUniformLocation(m_program.glId(), "uKd");
     m_uKdSamplerLocation = glGetUniformLocation(m_program.glId(), "uKdSampler");
-    m_viewController.setViewMatrix(glm::lookAt(glm::vec3(0, 0, -10), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
-    m_viewController.setSpeed(8.f);
+    m_viewController.setViewMatrix(glm::lookAt(glm::vec3(0, 0, -3), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0)));
+    m_viewController.setSpeed(8.0f);
     glActiveTexture(GL_TEXTURE0);
     loadModel();
 }
@@ -122,37 +125,37 @@ Application::Application(int argc, char **argv) : m_AppPath{glmlv::fs::path{argv
 void Application::loadModel()
 {
     tinygltf::TinyGLTF loader;
-    std::string e;
-    std::string warning;
-    bool rtn = loader.LoadASCIIFromFile(&m_model, &e, &warning, path);
-    if (!warning.empty())
+    std::string err;
+    std::string warn;
+    bool ret = loader.LoadASCIIFromFile(&m_model, &err, &warn, path);
+    if (!warn.empty())
     {
-        printf("Warning: %s\n", warning.c_str());
+        printf("Warning: %s\n", warn.c_str());
     }
-    if (!e.empty())
+    if (!err.empty())
     {
-        printf("Oops! Error occurs: %s\n", e.c_str());
+        printf("Oops! Error occurs: %s\n", err.c_str());
     }
-    if (!rtn)
+    if (!ret)
     {
-        printf("Failed to resolve glTF.\n");
+        printf("Failed to resolve glTF\n");
         return;
     }
     std::cout << "Property of current glTF:\n"
-              << m_model.accessors.size() << " accessors,\n"
-              << m_model.animations.size() << " animations,\n"
-              << m_model.buffers.size() << " buffers,\n"
-              << m_model.bufferViews.size() << " bufferViews,\n"
-              << m_model.materials.size() << " materials,\n"
-              << m_model.meshes.size() << " meshes,\n"
-              << m_model.nodes.size() << " nodes,\n"
-              << m_model.textures.size() << " textures,\n"
-              << m_model.images.size() << " images,\n"
-              << m_model.skins.size() << " skins,\n"
-              << m_model.samplers.size() << " samplers,\n"
-              << m_model.cameras.size() << " cameras,\n"
-              << m_model.scenes.size() << " scenes,\n"
-              << m_model.lights.size() << " lights.\n";
+              << m_model.accessors.size() << " accessors\n"
+              << m_model.animations.size() << " animations\n"
+              << m_model.buffers.size() << " buffers\n"
+              << m_model.bufferViews.size() << " bufferViews\n"
+              << m_model.materials.size() << " materials\n"
+              << m_model.meshes.size() << " meshes\n"
+              << m_model.nodes.size() << " nodes\n"
+              << m_model.textures.size() << " textures\n"
+              << m_model.images.size() << " images\n"
+              << m_model.skins.size() << " skins\n"
+              << m_model.samplers.size() << " samplers\n"
+              << m_model.cameras.size() << " cameras\n"
+              << m_model.scenes.size() << " scenes\n"
+              << m_model.lights.size() << " lights\n";
     // init and generate a vector containing all buffers
     std::vector<GLuint> scene_buffers(m_model.buffers.size());
     glGenBuffers(scene_buffers.size(), scene_buffers.data());
@@ -164,13 +167,12 @@ void Application::loadModel()
         glBufferStorage(bufferView.target, m_model.buffers[i].data.size(), m_model.buffers[i].data.data(), 0);
         glBindBuffer(bufferView.target, 0);
     }
-
     // 加载网格
     for (size_t i = 0; i < m_model.meshes.size(); ++i)
     {
         // 加载当前网格
         const tinygltf::Mesh &mesh = m_model.meshes[i];
-        for (size_t j = 0; j < mesh.primitives.size(); ++j)
+        for (int j = 0; j < mesh.primitives.size(); ++j)
         {
             const tinygltf::Primitive &prim = mesh.primitives[j];
             GLuint vao_primitive = 0;
@@ -183,13 +185,13 @@ void Application::loadModel()
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, scene_buffers[bufferId]);
             std::map<std::string, int>::const_iterator it(prim.attributes.begin());
             std::map<std::string, int>::const_iterator itEnd(prim.attributes.end());
-            for (; it != itEnd; ++it)
+            for (; it != itEnd; it++)
             {
-                tinygltf::Accessor &accessor = m_model.accessors[it -> second];
+                tinygltf::Accessor &accessor = m_model.accessors[it->second];
                 bufferView = m_model.bufferViews[accessor.bufferView];
                 bufferId = bufferView.buffer;
                 glBindBuffer(GL_ARRAY_BUFFER, scene_buffers[bufferId]);
-                // 获取组件数量
+                // 初始化组建数量 默认为1
                 int size = 1;
                 if (accessor.type == TINYGLTF_TYPE_SCALAR)
                 {
@@ -209,7 +211,7 @@ void Application::loadModel()
                 }
                 else
                 {
-                    fprintf(stderr, "Wrong type.");
+                    fprintf(stderr, "Wrong tinygltf type.");
                     exit(EXIT_FAILURE);
                 }
                 if ((it->first.compare("POSITION") == 0) || (it->first.compare("NORMAL") == 0) || (it->first.compare("TEXCOORD_0") == 0))
@@ -226,12 +228,13 @@ void Application::loadModel()
                         glVertexAttribPointer(m_attribs[it->first], size, accessor.componentType, accessor.normalized ? GL_TRUE : GL_FALSE, byteStride, (const GLvoid *)(bufferView.byteOffset + accessor.byteOffset));
                     }
                 }
+
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
             }
-            // 将缓存压入向量
+            // 将缓存加入向量中
             m_vaos.push_back(vao_primitive);
             m_primitives.push_back(prim);
-            // 初始化载入纹理
+            // 初始化并载入纹理
             glBindVertexArray(0);
             // 初始化漫反射纹理缓存
             m_diffuseTex.push_back(0);
@@ -257,9 +260,13 @@ void Application::loadModel()
                 {
                     format = GL_RG;
                 }
-                else (image.component == 3)
+                else if (image.component == 3)
                 {
                     format = GL_RGB;
+                }
+                else
+                {
+                    pass;
                 }
                 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
                 glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -309,7 +316,7 @@ void Application::DrawNode(tinygltf::Model &model, const tinygltf::Node &node, g
         DrawMesh(node.mesh, modelMatrix);
     }
     // 绘制子节点
-    for (size_t i = 0; i < node.children.size(); ++i)
+    for (size_t i = 0; i < node.children.size(); i++)
     {
         DrawNode(model, model.nodes[node.children[i]], modelMatrix);
     }
@@ -323,7 +330,7 @@ void Application::DrawMesh(int meshId, glm::mat4 modelMatrix)
     glUniformMatrix4fv(m_uModelViewProjMatrixLocation, 1, GL_FALSE, glm::value_ptr(mvpMatrix));
     glUniformMatrix4fv(m_uModelViewMatrixLocation, 1, GL_FALSE, glm::value_ptr(mvMatrix));
     glUniformMatrix4fv(m_uNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-    // 漫反射光照
+    // 仅漫反射颜色
     glUniform3fv(m_uKdLocation, 1, glm::value_ptr(glm::vec3(1, 1, 1)));
     glBindTexture(GL_TEXTURE_2D, m_diffuseTex[meshId]);
     const tinygltf::Accessor &indexAccessor = m_model.accessors[m_primitives[meshId].indices];
@@ -368,7 +375,7 @@ GLenum Application::getglTFMode(int mode)
     }
     else
     {
-        fprintf(stderr, ". Wrong mode!\n");
+        fprintf(stderr, "Wrong gltf mode.\n");
         exit(EXIT_FAILURE);
     }
 }
@@ -377,12 +384,12 @@ void Application::drawModel(tinygltf::Model &model)
 {
     if (model.scenes.size() < 0)
     {
-        fprintf(stderr, ". Scene has no model!");
+        fprintf(stderr, "Scene has no model.");
         exit(EXIT_FAILURE);
     }
     int scene_to_display = model.defaultScene > -1 ? model.defaultScene : 0;
     const tinygltf::Scene &scene = model.scenes[scene_to_display];
-    for (size_t i = 0; i < scene.nodes.size(); ++i)
+    for (size_t i = 0; i < scene.nodes.size(); i++)
     {
         DrawNode(model, model.nodes[scene.nodes[i]], glm::mat4(1));
     }
