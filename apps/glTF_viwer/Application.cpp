@@ -316,7 +316,7 @@ void Application::DrawNode(tinygltf::Model &model, const tinygltf::Node &node, g
         DrawMesh(node.mesh, modelMatrix);
     }
     // 绘制子节点
-    for (size_t i = 0; i < node.children.size(); i++)
+    for (size_t i = 0; i < node.children.size(); ++i)
     {
         DrawNode(model, model.nodes[node.children[i]], modelMatrix);
     }
@@ -389,7 +389,7 @@ void Application::drawModel(tinygltf::Model &model)
     }
     int scene_to_display = model.defaultScene > -1 ? model.defaultScene : 0;
     const tinygltf::Scene &scene = model.scenes[scene_to_display];
-    for (size_t i = 0; i < scene.nodes.size(); i++)
+    for (size_t i = 0; i < scene.nodes.size(); ++i)
     {
         DrawNode(model, model.nodes[scene.nodes[i]], glm::mat4(1));
     }
